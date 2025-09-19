@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>🔑 Azure DevOps Access Management</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root{
+        --bg1:#0b1220;
+        --bg2:#0f1a33;
+        --fg:#e7e7ea;
+        --muted:#aab0c0;
+        --accent:#0078d4;
+        --accent-2:#40a6ff;
+        --card-bg:rgba(255,255,255,.08);
+        --card-brd:rgba(255,255,255,.22);
+        --shadow:0 20px 60px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.08);
+        --radius:18px;
+      }
+      @media (prefers-color-scheme: light){
+        :root{
+          --bg1:#eef2f7;
+          --bg2:#dfe7f3;
+          --fg:#10131a;
+          --muted:#4a5568;
+          --card-bg:rgba(255,255,255,.7);
+          --card-brd:rgba(0,0,0,.1);
+          --shadow:0 16px 44px rgba(0,0,0,.15), inset 0 1px 0 rgba(255,255,255,.6);
+        }
+      }
+
+      /* Page background */
+      body{
+        margin:0;
+        min-height:100dvh;
+        color:var(--fg);
+        font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
+        background:
+          radial-gradient(1200px 800px at 10% 10%, rgba(64,166,255,.15), transparent 60%),
+          radial-gradient(900px 700px at 90% 80%, rgba(0,120,212,.18), transparent 60%),
+          linear-gradient(160deg, var(--bg1), var(--bg2));
+        display:grid;
+        place-items:center;
+        overflow:hidden;
+      }
+
+      /* Decorative animated blobs */
+      .bg-decor{
+        position:fixed; inset:0; pointer-events:none; z-index:-1;
+      }
+      .blob{
+        position:absolute; filter: blur(40px);
+        opacity:.45; will-change: transform;
+        background: radial-gradient(circle at 30% 30%, rgba(64,166,255,.75), transparent 60%);
+        width:420px; height:420px; border-radius:50%;
+        animation: float1 18s ease-in-out infinite alternate;
+      }
+      .blob.b2{
+        background: radial-gradient(circle at 70% 60%, rgba(0,120,212,.75), transparent 60%);
+        width:520px; height:520px; right:-120px; bottom:-140px;
+        animation: float2 22s ease-in-out infinite alternate;
+      }
+      @keyframes float1 { from{ transform: translate(-80px,-60px) } to{ transform: translate(40px, 20px) } }
+      @keyframes float2 { from{ transform: translate(40px,10px) } to{ transform: translate(-60px,-30px) } }
+
+      /* Subtle grid */
+      .grid{
+        position:absolute; inset:-200vmax;
+        background-image:
+          linear-gradient(to right, rgba(255,255,255,.06) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(255,255,255,.06) 1px, transparent 1px);
+        background-size: 40px 40px;
+        transform: perspective(1200px) rotateX(55deg) translateY(30vmin);
+        mask-image: radial-gradient(closest-side, rgba(0,0,0,.9), transparent 75%);
+      }
+
+      /* Glass card */
+      .card{
+        width:min(92vw, 480px);
+        padding:2.2rem 2rem 2rem;
+        border-radius:var(--radius);
+        background: var(--card-bg);
+        border:1px solid var(--card-brd);
+        box-shadow: var(--shadow);
+        -webkit-backdrop-filter: blur(18px) saturate(160%);
+        backdrop-filter: blur(18px) saturate(160%);
+        transform-style: preserve-3d;
+        transition: transform .18s ease, box-shadow .18s ease;
+      }
+      .card:hover{
+        box-shadow: 0 30px 80px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.1);
+      }
+
+      /* 3D tilt */
+      .tilt{ transform: perspective(1000px) rotateX(var(--rx,0)) rotateY(var(--ry,0)) translateZ(0); }
+      .tilt *{ transform: translateZ(var(--z,0)); }
+      .brand{ display:flex; align-items:center; gap:.75rem; margin-bottom:.5rem }
+      .logo{
+        width:40px;height:40px;border-radius:10px;
+        display:grid;place-items:center;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color:white;font-weight:700;letter-spacing:.2px;
+        box-shadow: 0 8px 18px rgba(0,120,212,.45);
+      }
+      h1{ margin:0 0 .25rem 0; font-size:1.6rem; letter-spacing:.2px }
+      .muted{ color:var(--muted); margin:.4rem 0 .9rem }
+
+      .btn{
+        display:inline-flex; align-items:center; gap:.5rem;
+        padding:.75rem 1.05rem;
+        border-radius:10px;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color:#fff; text-decoration:none; font-weight:600;
+        border:1px solid rgba(255,255,255,.25);
+        box-shadow: 0 10px 24px rgba(0,120,212,.35);
+        transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+      }
+      .btn:hover{ transform: translateY(-1px); filter: brightness(1.05); box-shadow: 0 14px 30px rgba(0,120,212,.45) }
+      .btn:active{ transform: translateY(0) scale(.98) }
+      .btn .ico{ display:inline-block; width:18px; height:18px }
+
+      .small{ font-size:.85rem; color:var(--muted); margin-top:1rem }
+
+      @media (prefers-reduced-motion: reduce){
+        .blob{ animation:none }
+        .card, .btn{ transition:none }
+      }
+
+      /* Global loading overlay (shown on SSO click) */
+      .loading-screen{
+        position: fixed; inset: 0; z-index: 9999;
+        display: none; align-items: center; justify-content: center;
+        background: rgba(0,0,0,.25);
+        -webkit-backdrop-filter: blur(6px);
+        backdrop-filter: blur(6px);
+      }
+      .loading-screen.active{ display:flex }
+      .spinner{
+        width:56px; height:56px; border-radius:50%;
+        border:4px solid rgba(255,255,255,.28);
+        border-top-color: var(--accent-2);
+        animation: spin .9s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg) } }
+      .loader-text{ margin-top:.75rem; color:var(--fg); font-weight:600; text-align:center }
+    </style>
+  </head>
+  <body>
+    <div class="bg-decor" aria-hidden="true">
+      <div class="blob"></div>
+      <div class="blob b2"></div>
+      <div class="grid"></div>
+    </div>
+    <div id="globalLoader" class="loading-screen" role="status" aria-live="polite" aria-busy="true">
+      <div>
+        <div class="spinner" aria-hidden="true"></div>
+        <div class="loader-text">Signing you in…</div>
+      </div>
+    </div>
+    <main>
+      <section class="card tilt" id="loginCard" tabindex="0" aria-label="Sign in">
+            <h1>Azure DevOps Access Management - SSO Sign in</h1>
+            <div class="muted">Use your domain credentials to login.</div>
+          </div>
+        </div>
+
+        <p class="muted">Use your AzDO credentials to validate your license status.</p>
+
+        <p>
+          <a id="signinBtn" class="btn" href="/signin">
+            <svg class="ico" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M17 11V7a5 5 0 10-10 0v4" stroke="white" stroke-width="1.7" stroke-linecap="round"/>
+              <rect x="5" y="11" width="14" height="10" rx="2.2" stroke="white" stroke-width="1.7"/>
+            </svg>
+            Sign in with [Your Company Name] (SSO)
+          </a>
+        </p>
+
+        <p class="small">By continuing you agree to your organization’s acceptable use policy.</p>
+      </section>
+    </main>
+
+    <script>
+      // 3D tilt effect
+      (function(){
+        const el = document.getElementById('loginCard');
+        if(!el) return;
+        const limit = 10; // degrees
+        function setTransform(x, y){
+          const rect = el.getBoundingClientRect();
+          const cx = rect.left + rect.width / 2;
+          const cy = rect.top + rect.height / 2;
+          const dx = (x - cx) / (rect.width / 2);
+          const dy = (y - cy) / (rect.height / 2);
+          const rx = (-dy * limit).toFixed(2) + 'deg';
+          const ry = (dx * limit).toFixed(2) + 'deg';
+          el.style.setProperty('--rx', rx);
+          el.style.setProperty('--ry', ry);
+          // Pop inner content slightly
+          el.style.setProperty('--z', '28px');
+        }
+        function reset(){
+          el.style.setProperty('--rx', '0deg');
+          el.style.setProperty('--ry', '0deg');
+          el.style.setProperty('--z', '0px');
+        }
+        el.addEventListener('mousemove', (e)=> setTransform(e.clientX, e.clientY));
+        el.addEventListener('mouseleave', reset);
+        el.addEventListener('blur', reset);
+      })();
+
+      // Show loader immediately on SSO click so users see feedback during redirect
+      (function(){
+        const btn = document.getElementById('signinBtn');
+        const overlay = document.getElementById('globalLoader');
+        if (!btn || !overlay) return;
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          overlay.classList.add('active');
+          overlay.setAttribute('aria-busy','true');
+          // Allow paint before navigation for better UX
+          const url = btn.getAttribute('href');
+          setTimeout(() => { window.location.assign(url); }, 50);
+        });
+      })();
+    </script>
+  </body>
+</html>
