@@ -1,0 +1,83 @@
+# Pre request
+## Flask App with Entra ID (Azure AD) SSO Authentication
+
+A. System Requirements
+Python 3.9+ (recommended 3.9 or 3.10)
+pip (latest version)
+Git (optional, for source code management)
+A browser (Edge, Chrome, Firefox, etc.)
+
+B. Azure Entra ID (Azure AD) Setup
+Register an Application in Entra ID
+Go to Azure Portal → Entra ID → App registrations → New registration.
+Give it a name (e.g., Flask-DevOps-App).
+Supported account type: Single tenant (or multi-tenant if required).
+Redirect URI: http://localhost:8000/getAToken
+(must match REDIRECT_PATH in app.py).
+Configure Secrets
+Go to Certificates & Secrets → New Client Secret.
+Copy the secret value (you cannot retrieve it later).
+API Permissions
+Add Microsoft Graph → Delegated → User.Read.
+Grant admin consent.
+Collect IDs
+Application (client) ID → AZURE_CLIENT_ID
+Directory (tenant) ID → AZURE_TENANT_ID
+Client secret → AZURE_CLIENT_SECRET
+
+C. Azure DevOps Setup
+Generate a Personal Access Token (PAT) with at least:
+User.Read & User Entitlements (Graph scope in Azure DevOps REST API)
+Get the list of organizations where you want to check entitlements.
+
+E. Setup Environment in VSCode
+
+python -m venv .venv
+# set environment for Flask debug if desired
+$env:AZURE_CLIENT_ID=""
+$env:AZURE_CLIENT_SECRET=""
+$env:AZURE_TENANT_ID=""
+$env:FLASK_SECRET_KEY="MyTestSecret19896"
+
+$env:FLASK_APP="local.app.py"
+$env:FLASK_ENV="development"
+
+$env:AZURE_DEVOPS_PAT="" #for all organizations  that will be used
+$env:AZDO_ORGS="org1,org2"
+
+.\.venv\Scripts\Activate
+
+python local.app.py
+
+Access the app
+Open http://localhost:8000
+
+Authentication flow
+Click Login → redirect to Microsoft Entra login page.
+After login, redirected to /getAToken.
+Token acquired & stored in session.
+Dashboard shows user entitlements across Azure DevOps orgs.
+
+4. Testing the Authentication Flow
+✅ Login Test
+Go to /login → Sign in with Entra ID credentials.
+Verify session stores user and graph_token.
+
+✅ Graph API Test
+Access /me/photo → should return user’s profile photo (or blank).
+
+✅ Azure DevOps Test
+Ensure AZURE_DEVOPS_PAT and AZDO_ORGS are set.
+After login, orgs and entitlements should display on the dashboard.
+Try /enable_access → should patch user’s license if Stakeholder.
+
+✅ Logout Test
+Visit /logout → session clears → redirect to Entra logout.
+
+### Production Notes
+Use Gunicorn for production:
+gunicorn -w 4 -b 0.0.0.0:8000 app:app
+
+Store secrets in Azure Key Vault or environment variables, not in code.
+Configure HTTPS in production (Flask dev server is HTTP only).
+Use azurewebapp.app.py for cloud deployments

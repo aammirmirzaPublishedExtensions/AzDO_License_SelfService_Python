@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>🔑 Azure DevOps Access Management</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root{
+        --bg1:#0b1220;
+        --bg2:#0f1a33;
+        --fg:#e7e7ea;
+        --muted:#aab0c0;
+        --accent:#0078d4;
+        --accent-2:#40a6ff;
+        --card-bg:rgba(255,255,255,.08);
+        --card-brd:rgba(255,255,255,.22);
+        --shadow:0 20px 60px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.08);
+        --radius:18px;
+        --pill-bg: rgba(255,255,255,.12);
+      }
+      @media (prefers-color-scheme: light){
+        :root{
+          --bg1:#eef2f7;
+          --bg2:#dfe7f3;
+          --fg:#10131a;
+          --muted:#4a5568;
+          --card-bg:rgba(255,255,255,.7);
+          --card-brd:rgba(0,0,0,.1);
+          --shadow:0 16px 44px rgba(0,0,0,.15), inset 0 1px 0 rgba(255,255,255,.6);
+          --pill-bg: rgba(0,0,0,.06);
+        }
+      }
+
+      body{
+        margin:0; min-height:100dvh; color:var(--fg);
+        font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
+        background:
+          radial-gradient(1200px 800px at 10% 10%, rgba(64,166,255,.15), transparent 60%),
+          radial-gradient(900px 700px at 90% 80%, rgba(0,120,212,.18), transparent 60%),
+          linear-gradient(160deg, var(--bg1), var(--bg2));
+        display:grid; place-items:center; overflow-x:hidden; padding: 6vmin 2vmin;
+      }
+
+      .bg-decor{ position:fixed; inset:0; pointer-events:none; z-index:-1; }
+      .blob{ position:absolute; filter: blur(40px); opacity:.45; will-change: transform;
+             background: radial-gradient(circle at 30% 30%, rgba(64,166,255,.75), transparent 60%);
+             width:420px; height:420px; border-radius:50%;
+             animation: float1 18s ease-in-out infinite alternate; }
+      .blob.b2{ background: radial-gradient(circle at 70% 60%, rgba(0,120,212,.75), transparent 60%);
+                width:520px; height:520px; right:-120px; bottom:-140px; animation: float2 22s ease-in-out infinite alternate; }
+      @keyframes float1 { from{ transform: translate(-80px,-60px) } to{ transform: translate(40px, 20px) } }
+      @keyframes float2 { from{ transform: translate(40px,10px) } to{ transform: translate(-60px,-30px) } }
+      .grid{
+        position:absolute; inset:-200vmax;
+        background-image:
+          linear-gradient(to right, rgba(255,255,255,.06) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(255,255,255,.06) 1px, transparent 1px);
+        background-size: 40px 40px;
+        transform: perspective(1200px) rotateX(55deg) translateY(30vmin);
+        mask-image: radial-gradient(closest-side, rgba(0,0,0,.9), transparent 75%);
+      }
+
+      .card{
+        width:min(1200px, 94vw);
+        padding:1.2rem 1.2rem 1.4rem;
+        border-radius:var(--radius);
+        background: var(--card-bg);
+        border:1px solid var(--card-brd);
+        box-shadow: var(--shadow);
+        -webkit-backdrop-filter: blur(18px) saturate(160%);
+        backdrop-filter: blur(18px) saturate(160%);
+        transform-style: preserve-3d;
+        transition: transform .18s ease, box-shadow .18s ease;
+      }
+      .card:hover{ box-shadow: 0 30px 80px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.1) }
+
+      .tilt{ transform: perspective(1000px) rotateX(var(--rx,0)) rotateY(var(--ry,0)) translateZ(0); }
+      .tilt *{ transform: translateZ(var(--z,0)); }
+
+      .header{
+        display:flex; align-items:center; gap:1rem; padding: .6rem .6rem 1rem .6rem; border-bottom: 1px solid var(--card-brd);
+      }
+      .brand{
+        display:flex; align-items:center; gap:.6rem; margin-right:auto;
+      }
+      .logo{
+        width:40px;height:40px;border-radius:10px; display:grid;place-items:center;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color:white;font-weight:700;letter-spacing:.2px; box-shadow: 0 8px 18px rgba(0,120,212,.45);
+      }
+      .user{ display:flex; align-items:center; gap: .75rem; }
+      img.photo{ width:48px; height:48px; border-radius:50%; background: #eee; border:1px solid var(--card-brd); }
+      .pill{ padding:.2rem .5rem; border-radius: 999px; background: var(--pill-bg); }
+
+      .btn{
+        padding:.5rem .8rem; border: 1px solid rgba(255,255,255,.25);
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color:#fff; border-radius: 10px; cursor:pointer; font-weight:600;
+        box-shadow: 0 10px 24px rgba(0,120,212,.35);
+        transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+      }
+      /* Remove underline on anchor-styled buttons */
+      .btn, .btn:visited, .btn:hover, .btn:focus { text-decoration: none; }
+      .btn:hover{ transform: translateY(-1px); filter: brightness(1.05); box-shadow: 0 14px 30px rgba(0,120,212,.45) }
+      .btn[disabled]{ background: #6b7280; border-color:#6b7280; cursor:not-allowed; box-shadow:none }
+
+      .flash{ margin:.75rem 0; padding:.6rem .75rem; border-radius:10px; border:1px solid var(--card-brd); }
+      .flash.success{ background: rgba(16,185,129,.15) }
+      .flash.error{ background: rgba(239,68,68,.15) }
+
+      h2{ margin: 1rem .4rem .6rem; letter-spacing:.2px }
+
+      .table-wrap{ overflow:auto; border-radius: 12px; border:1px solid var(--card-brd); }
+      table{ border-collapse: separate; border-spacing:0; width:100%; min-width: 720px; }
+      thead th{
+        position:sticky; top:0; background: rgba(255,255,255,.06);
+        backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      }
+      th, td{ border-bottom:1px solid var(--card-brd); padding: .6rem .75rem; text-align:left; }
+      tbody tr:hover{ background: rgba(255,255,255,.04) }
+      .actions{ text-align: right; }
+
+      @media (max-width: 720px){
+        .header{ flex-wrap: wrap; gap:.8rem }
+      }
+
+      @media (prefers-reduced-motion: reduce){
+        .blob{ animation:none }
+        .card, .btn{ transition:none }
+      }
+
+      /* Access level colors */
+      .access-level{ font-weight:600; }
+      .access-basic{ color:#16a34a; }      /* green */
+      .access-nonbasic{ color:#dc2626; }   /* red */
+      .access-unknown{ color:#9ca3af; }    /* grey for Not Found */
+
+      /* Global loading overlay (used during Upgrade to Basic) */
+      .loading-screen{
+        position: fixed; inset: 0; z-index: 9999;
+        display: none; align-items: center; justify-content: center;
+        background: rgba(0,0,0,.28);
+        -webkit-backdrop-filter: blur(6px);
+        backdrop-filter: blur(6px);
+      }
+      .loading-screen.active{ display:flex }
+      .spinner{
+        width:56px; height:56px; border-radius:50%;
+        border:4px solid rgba(255,255,255,.28);
+        border-top-color: var(--accent-2);
+        animation: spin .9s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg) } }
+      .loader-text{ margin-top:.75rem; color:var(--fg); font-weight:600; text-align:center }
+
+      /* Organization links: white text, no underline */
+      .org-link{ color:#fff; text-decoration:none; }
+      .org-link:visited{ color:#fff; }
+      .org-link:hover, .org-link:focus{ color:#dce8f7; text-decoration:none; }
+    </style>
+  </head>
+  <body>
+    <div class="bg-decor" aria-hidden="true">
+      <div class="blob"></div>
+      <div class="blob b2"></div>
+      <div class="grid"></div>
+    </div>
+
+    <main class="card" id="dashCard" tabindex="0" aria-label="Azure DevOps Access">
+      <header class="header">
+        <div class="brand">
+          <div class="logo" aria-hidden="true">AzDO</div>
+          <div>
+            <div style="font-weight:700">Azure DevOps Access</div>
+            <div class="muted" style="font-size:.9rem">Manage your license across organizations</div>
+          </div>
+        </div>
+        <div class="user">
+          <img class="photo" src="/me/photo" alt="Profile photo" />
+          <div>
+            <div><strong>Welcome,</strong> {{ user.name or 'User' }}</div>
+            <div>UPN: <span class="pill">{{ user.upn }}</span></div>
+          </div>
+        </div>
+        <div style="margin-left:auto">
+          <form action="/logout" method="get">
+            <button class="btn" type="submit">Sign out</button>
+          </form>
+        </div>
+      </header>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <h2>Azure DevOps Organizations Scope</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Organization Name</th>
+              <th>UPN</th>
+              <th>Access Level</th>
+              <th class="actions">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in org_rows if row.access and row.access|lower != 'not found' %}
+              <tr>
+                <td>
+                  <a class="org-link" href="https://dev.azure.com/{{ row.org | urlencode }}" target="_blank" rel="noopener" title="Open {{ row.org }} in Azure DevOps">
+                    {{ row.org }}
+                  </a>
+                </td>
+                <td>{{ row.upn }}</td>
+                <td>
+                  <span class="access-level
+                    {% if row.access|lower == 'basic' %}access-basic
+                    {% else %}access-nonbasic{% endif %}">
+                    {{ row.access }}
+                  </span>
+                </td>
+                <td class="actions">
+                  <form action="/enable_access" method="post" style="display:inline">
+                    <input type="hidden" name="org" value="{{ row.org }}">
+                    <input type="hidden" name="upn" value="{{ row.upn }}">
+                    <input type="hidden" name="entitlement_id" value="{{ row.entitlement_id or '' }}">
+                    <span title="Associated cost $6 USD/User/Month for Basic License">
+                      <button class="btn" type="submit" {% if not row.can_enable %}disabled{% endif %}>
+                        Upgrade to Basic
+                      </button>
+                    </span>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </main>
+
+    <!-- Full-page loader shown during form POST -->
+    <div id="globalLoader" class="loading-screen" role="status" aria-live="polite" aria-busy="true">
+      <div>
+        <div class="spinner" aria-hidden="true"></div>
+        <div class="loader-text">Applying access…</div>
+      </div>
+    </div>
+
+    <script>
+      // Show loader while Upgrade to Basic form submits (ensures paint before navigation)
+      (function(){
+        const overlay = document.getElementById('globalLoader');
+        if (!overlay) return;
+
+        document.querySelectorAll('form[action="/enable_access"]').forEach(form => {
+          form.addEventListener('submit', function onSubmit(e){
+            const btn = form.querySelector('button[type="submit"]');
+            if (btn) btn.disabled = true;
+
+            overlay.classList.add('active');
+            overlay.setAttribute('aria-busy','true');
+
+            // Ensure the overlay paints before leaving the page
+            e.preventDefault();
+            requestAnimationFrame(() => setTimeout(() => form.submit(), 50));
+          });
+        });
+      })();
+    </script>
+  </body>
+</html>
